@@ -36,7 +36,6 @@ github.com/stretchr/objx v0.4.0/go.mod h1:YvHI0jy2hoMjB+UWwv71VJQ9isScKT/TqJzVSS
 github.com/stretchr/testify v1.7.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/stretchr/testify v1.8.0 h1:pSgiaMZlXftHpm5L7V1+rVB+AZJydKsMxsQBIJw4PKk=
 github.com/stretchr/testify v1.8.0/go.mod h1:yNjHg4UonilssWZ8iaSj1OCr/vHnekPRkoO+kdMU+MU=
-github.com/sunblaze-ucb/simpleMPI v0.0.0-20221116051826-70e801eec087 h1:yi/J02rvTYPJv/EzYe1G4rjm2fW0lozN58Vqm31YL6g=
 github.com/sunblaze-ucb/simpleMPI v0.0.0-20221116051826-70e801eec087/go.mod h1:m44SYvzkpmvNnpD7brwIsngBIhWzZTaRHtTsID+5CrM=
 github.com/sunblaze-ucb/simpleMPI v0.0.0-20221120065810-ed18cf7dee1a h1:UOt+TweE6pWmFJVqznmRdJ1+7ZGZ+YCOGq1r/N/1P5U=
 github.com/sunblaze-ucb/simpleMPI v0.0.0-20221120065810-ed18cf7dee1a/go.mod h1:m44SYvzkpmvNnpD7brwIsngBIhWzZTaRHtTsID+5CrM=
