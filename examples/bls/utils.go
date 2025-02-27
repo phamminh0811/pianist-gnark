@@ -1,10 +1,8 @@
-package bls
+package main
 
 import (
 	"crypto/rand"
-	"crypto/sha256"
-	"encoding/json"
-	"fmt"
+	"log"
 	"math/big"
 
 	bls12_381_ecc "github.com/consensys/gnark-crypto/ecc/bls12-381"
@@ -24,15 +22,26 @@ type PublicKey struct {
 	P *bls12_381_ecc.G2Affine
 }
 
-type Signature struct {
-	S []byte
-}
-
 func init() {
 	_, _, g1Gen, g2Gen = bls12_381_ecc.Generators()
 }
 
-// generate BLS private and public key pair
+// BatchGenerateKeyPairs generate BLS private and public key pairs
+func BatchGenerateKeyPairs(size int) ([]*PrivateKey, []*PublicKey, error) {
+	var privateKeys []*PrivateKey
+	var publicKeys []*PublicKey
+	for i := 0; i < size; i++ {
+		priKey, pubKey, err := GenerateKeyPair()
+		if err != nil {
+			log.Panicf("GenerateKeyPair failed: %s\n", err)
+		}
+		privateKeys = append(privateKeys, priKey)
+		publicKeys = append(publicKeys, pubKey)
+	}
+	return privateKeys, publicKeys, nil
+}
+
+// GenerateKeyPair generate BLS private and public key pair
 func GenerateKeyPair() (*PrivateKey, *PublicKey, error) {
 	// generate a random point in G2
 	g2Order := bls12_381_fr.Modulus()
@@ -49,7 +58,7 @@ func GenerateKeyPair() (*PrivateKey, *PublicKey, error) {
 	return priKey, pubKey, nil
 }
 
-// BLS signature uses a particular function, defined as:
+// Sign BLS signature uses a particular function, defined as:
 // S = pk * H(m)
 //
 // H is a hash function, for instance SHA256 or SM3.
@@ -66,30 +75,18 @@ func GenerateKeyPair() (*PrivateKey, *PublicKey, error) {
 // It is true because of the pairing function described above:
 // e(P, H(m)) = e(pk*G, H(m)) = e(G, pk*H(m)) = e(G, S)
 func Sign(privateKey *PrivateKey, msg []byte) (blsSignature []byte, err error) {
-	hPoint := hashToG1(msg)
-	sig := new(bls12_381_ecc.G1Affine).ScalarMultiplication(hPoint, privateKey.X)
 
-	blsSig := &Signature{
-		S: sig.Marshal(),
-	}
+	hashPointG1, _ := bls12_381_ecc.HashToG1(msg, g1Gen.Marshal())
 
-	// convert the signature to json format
-	sigContent, err := json.Marshal(blsSig)
-	if err != nil {
-		return nil, err
-	}
+	sig := new(bls12_381_ecc.G1Affine).ScalarMultiplication(&hashPointG1, privateKey.X)
 
-	return sigContent, nil
+	return sig.Marshal(), nil
 }
 
 func Verify(publicKey *PublicKey, sig, msg []byte) (bool, error) {
-	signature := new(Signature)
-	if err := json.Unmarshal(sig, signature); err != nil {
-		return false, fmt.Errorf("failed unmashalling bls signature [%s]", err)
-	}
 
 	sigPointG1 := new(bls12_381_ecc.G1Affine)
-	if err := sigPointG1.Unmarshal(signature.S); err != nil {
+	if err := sigPointG1.Unmarshal(sig); err != nil {
 		return false, err
 	}
 
@@ -100,8 +97,8 @@ func Verify(publicKey *PublicKey, sig, msg []byte) (bool, error) {
 	}
 
 	// e(P, H(m)) = e(H(m), P)
-	hashPointG1 := hashToG1(msg)
-	rp, err := bls12_381_ecc.Pair([]bls12_381_ecc.G1Affine{*hashPointG1}, []bls12_381_ecc.G2Affine{*publicKey.P})
+	hashPointG1, _ := bls12_381_ecc.HashToG1(msg, g1Gen.Marshal())
+	rp, err := bls12_381_ecc.Pair([]bls12_381_ecc.G1Affine{hashPointG1}, []bls12_381_ecc.G2Affine{*publicKey.P})
 	if err != nil {
 		return false, err
 	}
@@ -111,19 +108,4 @@ func Verify(publicKey *PublicKey, sig, msg []byte) (bool, error) {
 	isEqual := lp.Equal(&rp)
 
 	return isEqual, nil
-}
-
-func hashToG1(msg []byte) *bls12_381_ecc.G1Affine {
-	// hash a msg to a point of G1
-	k := HashUsingSha256(msg)
-	intK := new(big.Int).SetBytes(k)
-
-	return new(bls12_381_ecc.G1Affine).ScalarMultiplication(&g1Gen, intK)
-}
-func HashUsingSha256(data []byte) []byte {
-	h := sha256.New()
-	h.Write(data)
-	out := h.Sum(nil)
-
-	return out
 }
