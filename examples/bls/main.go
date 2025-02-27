@@ -31,9 +31,7 @@ func (circuit *BlsCircuit) Define(api frontend.API) error {
 	pl, _ := sw_bn254_ecc.Pair([]sw_bn254_ecc.G1Affine{circuit.Sig}, []sw_bn254_ecc.G2Affine{circuit.G2})
 	pr, _ := sw_bn254_ecc.Pair([]sw_bn254_ecc.G1Affine{circuit.Hm}, []sw_bn254_ecc.G2Affine{circuit.Pk})
 	
-	if !pl.Equal(&pr) {
-		panic("sig verify not match")
-	}
+	api.AssertIsEqual(pl, pr)
 	return nil
 
 }
