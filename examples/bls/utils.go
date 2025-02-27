@@ -2,16 +2,15 @@ package main
 
 import (
 	"crypto/rand"
-	"log"
 	"math/big"
 
-	bls12_381_ecc "github.com/consensys/gnark-crypto/ecc/bls12-381"
-	bls12_381_fr "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
+	bn_254_ecc "github.com/consensys/gnark-crypto/ecc/bn254"
+	bn_254_fr "github.com/consensys/gnark-crypto/ecc/bn254/fr"
 )
 
 var (
-	g1Gen bls12_381_ecc.G1Affine
-	g2Gen bls12_381_ecc.G2Affine
+	g1Gen bn_254_ecc.G1Affine
+	g2Gen bn_254_ecc.G2Affine
 )
 
 type PrivateKey struct {
@@ -19,38 +18,23 @@ type PrivateKey struct {
 }
 
 type PublicKey struct {
-	P *bls12_381_ecc.G2Affine
+	P *bn_254_ecc.G2Affine
 }
 
 func init() {
-	_, _, g1Gen, g2Gen = bls12_381_ecc.Generators()
-}
-
-// BatchGenerateKeyPairs generate BLS private and public key pairs
-func BatchGenerateKeyPairs(size int) ([]*PrivateKey, []*PublicKey, error) {
-	var privateKeys []*PrivateKey
-	var publicKeys []*PublicKey
-	for i := 0; i < size; i++ {
-		priKey, pubKey, err := GenerateKeyPair()
-		if err != nil {
-			log.Panicf("GenerateKeyPair failed: %s\n", err)
-		}
-		privateKeys = append(privateKeys, priKey)
-		publicKeys = append(publicKeys, pubKey)
-	}
-	return privateKeys, publicKeys, nil
+	_, _, g1Gen, g2Gen = bn_254_ecc.Generators()
 }
 
 // GenerateKeyPair generate BLS private and public key pair
 func GenerateKeyPair() (*PrivateKey, *PublicKey, error) {
 	// generate a random point in G2
-	g2Order := bls12_381_fr.Modulus()
+	g2Order := bn_254_fr.Modulus()
 	sk, err := rand.Int(rand.Reader, g2Order)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	pk := new(bls12_381_ecc.G2Affine).ScalarMultiplication(&g2Gen, sk)
+	pk := new(bn_254_ecc.G2Affine).ScalarMultiplication(&g2Gen, sk)
 
 	priKey := &PrivateKey{X: sk}
 	pubKey := &PublicKey{P: pk}
@@ -74,31 +58,31 @@ func GenerateKeyPair() (*PrivateKey, *PublicKey, error) {
 //
 // It is true because of the pairing function described above:
 // e(P, H(m)) = e(pk*G, H(m)) = e(G, pk*H(m)) = e(G, S)
-func Sign(privateKey *PrivateKey, msg []byte) (blsSignature []byte, err error) {
+func Sign(privateKey *PrivateKey, msg []byte) (blsSignature *bn_254_ecc.G1Affine, err error) {
 
-	hashPointG1, _ := bls12_381_ecc.HashToG1(msg, g1Gen.Marshal())
+	hashPointG1, _ := bn_254_ecc.HashToG1(msg, g1Gen.Marshal())
 
-	sig := new(bls12_381_ecc.G1Affine).ScalarMultiplication(&hashPointG1, privateKey.X)
+	sig := new(bn_254_ecc.G1Affine).ScalarMultiplication(&hashPointG1, privateKey.X)
 
-	return sig.Marshal(), nil
+	return sig, nil
 }
 
 func Verify(publicKey *PublicKey, sig, msg []byte) (bool, error) {
 
-	sigPointG1 := new(bls12_381_ecc.G1Affine)
+	sigPointG1 := new(bn_254_ecc.G1Affine)
 	if err := sigPointG1.Unmarshal(sig); err != nil {
 		return false, err
 	}
 
 	// e(G, S) = e(S, G)
-	lp, err := bls12_381_ecc.Pair([]bls12_381_ecc.G1Affine{*sigPointG1}, []bls12_381_ecc.G2Affine{g2Gen})
+	lp, err := bn_254_ecc.Pair([]bn_254_ecc.G1Affine{*sigPointG1}, []bn_254_ecc.G2Affine{g2Gen})
 	if err != nil {
 		return false, err
 	}
 
 	// e(P, H(m)) = e(H(m), P)
-	hashPointG1, _ := bls12_381_ecc.HashToG1(msg, g1Gen.Marshal())
-	rp, err := bls12_381_ecc.Pair([]bls12_381_ecc.G1Affine{hashPointG1}, []bls12_381_ecc.G2Affine{*publicKey.P})
+	hashPointG1, _ := bn_254_ecc.HashToG1(msg, g1Gen.Marshal())
+	rp, err := bn_254_ecc.Pair([]bn_254_ecc.G1Affine{hashPointG1}, []bn_254_ecc.G2Affine{*publicKey.P})
 	if err != nil {
 		return false, err
 	}
